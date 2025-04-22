@@ -1,0 +1,5 @@
+{
+    "CBSE": ["Mathematics", "Science", "English", "Social Studies"],
+    "ICSE": ["Physics", "Chemistry", "Literature", "History"],
+    "State Board": ["History", "Geography", "Civics", "Regional Language"]
+  }
