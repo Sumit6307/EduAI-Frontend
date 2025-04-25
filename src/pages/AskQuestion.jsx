@@ -1,15 +1,30 @@
 import { useState, useEffect, useCallback, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { FaArrowLeft, FaCopy, FaMicrophone } from 'react-icons/fa';
 import api from '../utils/api';
 import BoardSelector from '../components/BoardSelector';
 import HistoryPanel from '../components/HistoryPanel';
 import { BoardContext } from '../contexts/BoardContext';
 
-// Debug imports
-console.log('BoardSelector imported:', typeof BoardSelector);
-console.log('HistoryPanel imported:', typeof HistoryPanel);
+// Animation Variants
+const backButtonVariants = {
+  hidden: { x: -20, opacity: 0 },
+  visible: {
+    x: 0,
+    opacity: 1,
+    transition: { duration: 0.4, ease: 'easeOut' },
+  },
+  hover: {
+    scale: 1.05,
+    backgroundColor: '#e5e7eb',
+    transition: { duration: 0.2 },
+  },
+  tap: { scale: 0.95 },
+};
 
 function AskQuestion() {
+  const navigate = useNavigate();
   const { board } = useContext(BoardContext);
   const [query, setQuery] = useState('');
   const [response, setResponse] = useState(null);
@@ -17,13 +32,9 @@ function AskQuestion() {
   const [error, setError] = useState(null);
   const [suggestion, setSuggestion] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [mediaType, setMediaType] = useState('all'); // text, image, video, all
 
-  // Log render
-  useEffect(() => {
-    console.log('AskQuestion rendered:', { board, query, loading });
-  }, [board, query, loading]);
-
-  // Set suggestion
+  // Set suggestion based on board
   useEffect(() => {
     const suggestions = {
       CBSE: 'What is Newton’s First Law?',
@@ -41,29 +52,33 @@ function AskQuestion() {
   };
 
   // Handle submit
-  const handleSubmit = useCallback(async (e) => {
-    e.preventDefault();
-    if (!query.trim()) {
-      console.log('Submit blocked: Empty query');
-      return;
-    }
-    setLoading(true);
-    setResponse(null);
-    setError(null);
-    console.log('Submitting query:', { query, board });
+  const handleSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      if (!query.trim()) {
+        console.log('Submit blocked: Empty query');
+        setError('Please enter a question.');
+        return;
+      }
+      setLoading(true);
+      setResponse(null);
+      setError(null);
+      console.log('Submitting query:', { query, board, mediaType });
 
-    try {
-      const res = await api.post('/query', { query, board });
-      setResponse(res.data);
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 2000);
-    } catch (err) {
-      const errorMsg = err.response?.data?.error || err.message || 'Failed to fetch response';
-      setError(errorMsg);
-      console.error('Query error:', err);
-    }
-    setLoading(false);
-  }, [query, board]);
+      try {
+        const res = await api.post('/query', { query, board, mediaType });
+        setResponse(res.data);
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 2000);
+      } catch (err) {
+        const errorMsg = err.response?.data?.error || err.message || 'Failed to fetch response';
+        setError(errorMsg);
+        console.error('Query error:', err);
+      }
+      setLoading(false);
+    },
+    [query, board, mediaType]
+  );
 
   // Retry query
   const retryQuery = useCallback(() => {
@@ -85,15 +100,53 @@ function AskQuestion() {
       console.log('Copying response:', response.text.slice(0, 50) + '...');
       navigator.clipboard.writeText(response.text);
       alert('Response copied to clipboard!');
+    } else {
+      alert('No text response to copy.');
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-950 via-indigo-900 to-teal-800 py-16 relative">
-      {/* Animated Wave Background */}
-      <div className="absolute inset-0 bg-wave opacity-20 z-[-1]" />
+  // Voice input
+  const startVoiceInput = () => {
+    if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+      alert('Voice input is not supported in this browser.');
+      return;
+    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
 
-      <div className="container mx-auto px-4 relative z-10">
+    recognition.onstart = () => setLoading(true);
+    recognition.onend = () => setLoading(false);
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setQuery(transcript);
+    };
+    recognition.onerror = () => {
+      setLoading(false);
+      alert('Voice recognition failed.');
+    };
+
+    recognition.start();
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100 text-gray-800 flex flex-col relative">
+      {/* Back Button */}
+      <motion.button
+        variants={backButtonVariants}
+        initial="hidden"
+        animate="visible"
+        whileHover="hover"
+        whileTap="tap"
+        onClick={() => navigate(-1) || navigate('/')}
+        className="fixed top-4 left-4 z-20 flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-600 font-medium shadow-sm hover:text-blue-600"
+      >
+        <FaArrowLeft className="text-sm" /> Back
+      </motion.button>
+
+      <div className="container mx-auto px-4 py-16 flex-grow">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -101,80 +154,110 @@ function AskQuestion() {
           transition={{ duration: 0.5 }}
           className="text-center mb-8"
         >
-          <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-300 drop-shadow-md">
-            EduAI
+          <h1 className="text-4xl font-bold text-blue-600 font-sans">
+            EduAI Learning Hub
           </h1>
-          <p className="text-blue-200 mt-2">Discover knowledge with precision</p>
+          <p className="text-lg text-gray-600 mt-2">Your trusted companion for academic excellence</p>
         </motion.div>
 
         {/* Main Card */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
+          initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="bg-white rounded-xl p-8 shadow-lg border border-blue-200/30 grid grid-cols-1 lg:grid-cols-4 gap-6"
+          transition={{ duration: 0.5 }}
+          className="bg-white rounded-lg shadow-md p-6 grid grid-cols-1 lg:grid-cols-4 gap-6"
         >
           {/* Main Content */}
           <motion.div
             className="col-span-3 space-y-6"
-            initial={{ opacity: 0, x: -20 }}
+            initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
+            transition={{ duration: 0.4 }}
           >
             {/* Board Selector */}
             <motion.div
-              initial={{ opacity: 0, x: -20 }}
+              initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
             >
               <BoardSelector />
             </motion.div>
 
             {/* Query Input */}
             <motion.div
-              initial={{ opacity: 0, x: -20 }}
+              initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.5 }}
+              transition={{ duration: 0.4, delay: 0.2 }}
             >
-              <label className="block text-gray-800 font-medium mb-2">
-                Your Question
+              <label className="block text-gray-700 font-medium mb-2 font-sans">
+                Ask Your Question
               </label>
               <textarea
                 value={query}
                 onChange={handleQueryChange}
                 placeholder={suggestion}
-                className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 bg-gray-50 text-gray-800"
+                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800"
                 rows={4}
                 aria-label="Enter your question"
-                style={{ pointerEvents: 'auto', userSelect: 'auto' }}
               />
               <div className="flex justify-between items-center mt-2">
-                <p className="text-gray-600 text-sm">{query.length}/500 characters</p>
+                <p className="text-gray-500 text-sm">{query.length}/500 characters</p>
                 {loading && (
                   <motion.div
-                    className="h-1 bg-blue-600 rounded-full w-full"
+                    className="h-1 bg-blue-500 rounded-full w-full"
                     initial={{ width: '0%' }}
                     animate={{ width: '100%' }}
                     transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
                   />
                 )}
               </div>
+              {/* Media Type Toggle */}
+              <div className="flex gap-2 mt-3">
+                {['all', 'text', 'image', 'video'].map((type) => (
+                  <motion.button
+                    key={type}
+                    onClick={() => setMediaType(type)}
+                    className={`px-3 py-1 rounded-md text-sm font-medium ${
+                      mediaType === type
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  </motion.button>
+                ))}
+              </div>
               <div className="flex gap-3 mt-3">
-                <button
+                <motion.button
                   onClick={handleSubmit}
                   disabled={loading || !query.trim()}
-                  className={`flex-1 p-3 rounded-lg font-semibold text-white bg-blue-600 ${loading || !query.trim() ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700 hover:shadow-lg'}`}
-                  style={{ pointerEvents: 'auto' }}
+                  className={`flex-1 p-3 rounded-md font-medium bg-blue-500 text-white ${
+                    loading || !query.trim() ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'
+                  }`}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                 >
                   {loading ? 'Processing...' : 'Ask Question'}
-                </button>
-                <button
+                </motion.button>
+                <motion.button
+                  onClick={startVoiceInput}
+                  className="p-3 rounded-md bg-gray-100 text-blue-500 border border-gray-300 hover:bg-gray-200"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  aria-label="Voice input"
+                >
+                  <FaMicrophone />
+                </motion.button>
+                <motion.button
                   onClick={clearQuery}
-                  className="p-3 rounded-lg font-semibold text-gray-800 bg-gray-200 hover:bg-gray-300 hover:shadow-lg"
-                  style={{ pointerEvents: 'auto' }}
+                  className="p-3 rounded-md font-medium text-gray-600 bg-gray-100 border border-gray-300 hover:bg-gray-200"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                 >
                   Clear
-                </button>
+                </motion.button>
               </div>
             </motion.div>
 
@@ -185,16 +268,17 @@ function AskQuestion() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
-                  className="text-red-600 bg-red-100 p-3 rounded-lg flex justify-between items-center"
+                  className="text-red-600 bg-red-50 p-3 rounded-md flex justify-between items-center border border-red-200"
                 >
                   <p>{error}</p>
-                  <button
+                  <motion.button
                     onClick={retryQuery}
-                    className="px-3 py-1 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700"
-                    style={{ pointerEvents: 'auto' }}
+                    className="px-3 py-1 rounded-md bg-red-500 text-white text-sm hover:bg-red-600"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
                     Retry
-                  </button>
+                  </motion.button>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -207,7 +291,7 @@ function AskQuestion() {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="absolute top-4 right-4 bg-green-600 text-white p-2 rounded-full"
+                  className="absolute top-4 right-4 bg-green-500 text-white p-2 rounded-full"
                 >
                   <svg
                     className="w-6 h-6"
@@ -231,41 +315,65 @@ function AskQuestion() {
             <AnimatePresence>
               {response && !error && (
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
+                  transition={{ duration: 0.4 }}
                   className="space-y-4"
                 >
-                  <motion.div
-                    className="p-4 bg-gray-50 rounded-lg"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.1 }}
-                  >
-                    <h3 className="font-semibold text-blue-600 mb-2">Answer</h3>
-                    <p className="text-gray-800">{response.text || 'No response text available'}</p>
-                    <button
-                      onClick={copyResponse}
-                      className="mt-3 px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 hover:shadow-lg"
-                      style={{ pointerEvents: 'auto' }}
-                    >
-                      Copy Answer
-                    </button>
-                  </motion.div>
-                  {response.visual && (
+                  {/* Text Response */}
+                  {response.text && (
                     <motion.div
-                      className="p-4 bg-gray-50 rounded-lg"
+                      className="p-4 bg-gray-50 rounded-md border border-gray-200"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, delay: 0.2 }}
+                      transition={{ duration: 0.4, delay: 0.1 }}
                     >
-                      <h3 className="font-semibold text-blue-600 mb-2">Visualization</h3>
-                      <div className="bg-white p-4 rounded-lg border border-gray-200">
-                        {/* Placeholder for VisualCanvas */}
-                        <p className="text-gray-600">
-                          {JSON.stringify(response.visual, null, 2)}
-                        </p>
-                      </div>
+                      <h3 className="font-semibold text-blue-600 mb-2 font-sans">Text Answer</h3>
+                      <p className="text-gray-700">{response.text}</p>
+                      <motion.button
+                        onClick={copyResponse}
+                        className="mt-3 px-4 py-2 rounded-md bg-blue-500 text-white font-medium hover:bg-blue-600"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <FaCopy className="inline mr-2" /> Copy Answer
+                      </motion.button>
+                    </motion.div>
+                  )}
+                  {/* Image Response */}
+                  {response.visual && (
+                    <motion.div
+                      className="p-4 bg-gray-50 rounded-md border border-gray-200"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: 0.2 }}
+                    >
+                      <h3 className="font-semibold text-blue-600 mb-2 font-sans">Diagram</h3>
+                      <img
+                        src={response.visual}
+                        alt={`Diagram for ${query}`}
+                        className="w-full max-w-md rounded-md border border-gray-200"
+                        loading="lazy"
+                      />
+                    </motion.div>
+                  )}
+                  {/* Video Response */}
+                  {response.video && (
+                    <motion.div
+                      className="p-4 bg-gray-50 rounded-md border border-gray-200"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: 0.3 }}
+                    >
+                      <h3 className="font-semibold text-blue-600 mb-2 font-sans">Video Explanation</h3>
+                      <video
+                        src={response.video}
+                        controls
+                        className="w-full max-w-md rounded-md border border-gray-200"
+                        loading="lazy"
+                      >
+                        Your browser does not support the video tag.
+                      </video>
                     </motion.div>
                   )}
                 </motion.div>
@@ -275,9 +383,9 @@ function AskQuestion() {
 
           {/* History Panel */}
           <motion.div
-            initial={{ opacity: 0, x: 20 }}
+            initial={{ opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
             className="lg:col-span-1"
           >
             <HistoryPanel />
