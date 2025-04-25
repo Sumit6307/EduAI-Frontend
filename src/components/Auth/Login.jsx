@@ -37,7 +37,7 @@ function Login() {
       const res = await api.post('/auth/login', { email, password });
       console.log('Login response:', res.data);
       localStorage.setItem('token', res.data.token);
-      navigate('/dashboard');
+      navigate('/');
     } catch (err) {
       console.error('Login error:', err);
       setError(err.response?.data?.msg || 'Invalid credentials');
