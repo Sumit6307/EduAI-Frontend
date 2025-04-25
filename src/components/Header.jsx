@@ -27,7 +27,6 @@ function Header() {
     { name: 'Dashboard', path: '/dashboard', icon: '📊' },
     ...(isAuthenticated
       ? [
-          { name: 'Profile', path: '/profile', icon: '👤' },
           {
             name: 'Logout',
             path: '/logout',
@@ -46,13 +45,6 @@ function Header() {
   ];
 
   const boards = ['CBSE', 'ICSE', 'State Board'];
-
-  // Handle search (mock)
-  const handleSearch = useCallback((e) => {
-    e.preventDefault();
-    console.log('Search submitted:', e.target.search.value);
-    alert('Search functionality coming soon!');
-  }, []);
 
   // Toggle dropdown
   const toggleDropdown = useCallback((name) => {
@@ -203,33 +195,6 @@ function Header() {
               </motion.ul>
             )}
           </motion.div>
-
-          {/* Search Bar */}
-          <motion.form
-            onSubmit={handleSearch}
-            className="flex"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
-          >
-            <input
-              type="text"
-              name="search"
-              placeholder="Search..."
-              className="px-3 py-1 rounded-l-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-200"
-              aria-label="Search EduAI"
-            />
-            <motion.button
-              type="submit"
-              className="px-3 py-1 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              aria-label="Submit search"
-              style={{ pointerEvents: 'auto' }}
-            >
-              🔍
-            </motion.button>
-          </motion.form>
         </nav>
 
         {/* Mobile Menu Button */}
@@ -342,32 +307,6 @@ function Header() {
                 </ul>
               )}
             </div>
-            {/* Search Bar (Mobile) */}
-            <motion.form
-              onSubmit={handleSearch}
-              className="flex"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3 }}
-            >
-              <input
-                type="text"
-                name="search"
-                placeholder="Search..."
-                className="flex-1 px-3 py-1 rounded-l-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                aria-label="Search EduAI"
-              />
-              <motion.button
-                type="submit"
-                className="px-3 py-1 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                aria-label="Submit search"
-                style={{ pointerEvents: 'auto' }}
-              >
-                🔍
-              </motion.button>
-            </motion.form>
           </div>
         </motion.nav>
       )}
