@@ -12,6 +12,8 @@ function Home() {
   const { board, setBoard } = useContext(BoardContext);
   const [testimonialIndex, setTestimonialIndex] = useState(0);
 
+
+  
   // Animation controls
   const controls = useAnimation();
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.2 });

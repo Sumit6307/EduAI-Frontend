@@ -17,6 +17,7 @@ const topicData = {
       quizLink: 'https://www.learncbse.in/cbse-class-12-physics-mcq/',
       simulationLink: 'https://phet.colorado.edu/en/simulations/category/physics',
     },
+    
     {
       name: 'Biology',
       description: 'Explore cells, genetics, and ecosystems with engaging visuals.',

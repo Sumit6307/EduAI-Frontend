@@ -7,6 +7,7 @@ import BoardSelector from '../components/BoardSelector';
 import HistoryPanel from '../components/HistoryPanel';
 import { BoardContext } from '../contexts/BoardContext';
 
+
 // Animation Variants
 const backButtonVariants = {
   hidden: { x: -20, opacity: 0 },

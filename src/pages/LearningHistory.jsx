@@ -9,6 +9,8 @@ function LearningHistory() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
 
+
+  
   // Fetch history
   const fetchHistory = useCallback(async () => {
     console.log('Fetching history');
